@@ -29,10 +29,10 @@ app.get('/', (req, res) => {
   <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
-  <title>登入</title>
+  <title>No1Security</title>
   </head>
   <body class="container text-center">
-  <h1>登入</h1>
+  <h1>No1Security登入</h1>
   <form action="/login" method="post" class=" form-group">
   <div>
   <label>帳號：</label>
@@ -53,6 +53,10 @@ app.get('/', (req, res) => {
   </html>
   `
   res.send(html)
+})
+
+app.get('/downloaddb', (req, res) => {
+  res.download('db.json')
 })
 
 app.post('/login', (req, res) => {
@@ -78,10 +82,10 @@ app.get('/register', (req, res) => {
   <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
-  <title>註冊</title>
+  <title>No1Security註冊</title>
   </head>
   <body class="container text-center">
-  <h1>註冊</h1>
+  <h1>No1Security註冊</h1>
   <form action="/register" method="post" class=" form-group">
   <div>
   <label>帳號：</label>
@@ -147,30 +151,74 @@ app.get('/:username', (req, res) => {
 }
 )
 
-app.get('downloaddb', (req, res) => {
-  res.download('db.json')
-})
 
 // MQTT Subscription
 mqttClient.on('connect', () => {
-  mqttClient.subscribe('topic/user/register');
-  mqttClient.subscribe('topic/device/register');
+  mqttClient.subscribe('no1security/device/register');
 });
 
 mqttClient.on('message', (topic, message) => {
   const data = JSON.parse(message.toString());
+  console.log(topic);
 
   switch (topic) {
-    case 'topic/user/register':
-      // Handle user registration via MQTT
-      const { username, password } = data;
-      db.get('users').push({ username, password }).write();
-      break;
-
-    case 'topic/device/register':
+    case 'no1security/device/register':
       // Handle device registration via MQTT
-      const { deviceId, userId } = data;
-      db.get('devices').push({ deviceId, userId }).write();
+      // data example
+      /*
+      data =  {
+        username: 'user',
+        password: '123456',
+        devicePair: {
+          inputDevice: {
+            id: '123456789',
+            type: 'flameDetector',
+            dataTypes: {
+                flameDetected: 'boolean',
+            },
+            location: 'room1',
+            pubTopic: 'flameDetector/123456789',
+          },
+          outputDevices: [
+            {
+              id: '987654321',
+              type: 'alarm',
+              dataTypes: {
+                  switch: 'boolean',
+                  volume: 'number',
+                  duration: 'number',
+              },
+              location: 'room1',
+              subTopic: 'alarm/987654321',
+            },
+            {
+              id: '123456789',
+              type: 'light',
+              dataTypes: {
+                  switch: 'boolean',
+                  color: 'string',
+                  brightness: 'number',
+              },
+              location: 'room1',
+              subTopic: 'light/123456789',
+            },
+          ]
+
+        }
+      }
+      */
+      // check if usernamw, password is correct
+      var userExists = db.data.users.find(u => u.username == data.username, u => u.password == data.password)
+      if (!userExists) {
+        return
+      }
+
+      var device=data.devicePair
+      device.username=userExists.username
+
+      db.data.devices.push(device)
+      db.write()
+
       break;
 
     default:
