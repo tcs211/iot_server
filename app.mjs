@@ -9,7 +9,7 @@ const db = new LowSync(new JSONFileSync('db.json'),{})
 db.read()
 // express server
 const app = express();
-const port = 3000;
+const port = 80;
 
 // MQTT Broker
 const mqttBroker = 'mqtt://localhost:1883';
@@ -86,7 +86,8 @@ mqttClient.on('message', (topic, message) => {
   }
 });
 
-// Start the server
+// Start the server on port 3000 if on test environment with nodemon
+
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+  console.log(`Server is running successfully`);
+})
