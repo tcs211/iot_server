@@ -153,7 +153,8 @@ app.get('/:username', (req, res) => {
     return
   }
   // get all devices for user
-  var devices = db.data.devices.filter(d => d.userId == userExists.username)
+  var devices = db.data.devices.filter(d => d.username == userExists.username)
+  // console.log(devices)
   if (devices.length == 0) {
 
     html+=`
@@ -167,15 +168,34 @@ app.get('/:username', (req, res) => {
 
     return
   }
-  devices = devices.map(d => d.deviceId)
+  html+=`<h1>裝置查詢</h1>
+  <table class="table table-striped">
+  <thead>
+  <tr>
+  <th>輸入裝置</th>
+  <th>輸出裝置</th>
+  </tr>
+  `
+  var inputDeviceTypes = devices.map(d =>d.inputDevice.id+'-'+ d.inputDevice.type+'-'+d.inputDevice.location)
+  for (var i = 0; i < inputDeviceTypes.length; i++) {
+    var type = inputDeviceTypes[i]
+    var outputDevices = devices[i].outputDevices.map(d => d.type+'-'+d.location).join('<br>')
+
+    html+=`
+    <tr>
+    <td>${type}</td>
+    <td>${outputDevices}</td>
+    </tr>
+    `
+  }
+  
   html+=`
-  <h1>裝置查詢</h1>
-  <div>目前有裝置：${devices.join(',')}</div>
+  
   <div class="text-center fixed-bottom">Projects for NCKU IoT Lession, 2023, by Chin-Sung Tung</div>
   </body>
   </html>
   `
-  res.send(devices)
+  res.send(html)
 }
 )
 
@@ -183,11 +203,18 @@ app.get('/:username', (req, res) => {
 // MQTT Subscription
 mqttClient.on('connect', () => {
   mqttClient.subscribe('no1security/service/register');
+  // get all devices
+  var devices = db.data.devices
+  for (var i = 0; i < devices.length; i++) {
+    var device = devices[i]
+    var topic = device.inputDevice.pubTopic
+    mqttClient.subscribe(topic)
+  }
 });
 
 mqttClient.on('message', (topic, message) => {
   const data = JSON.parse(message.toString());
-  console.log(topic);
+  console.log('topic in: ', topic);
 
   switch (topic) {
     case 'no1security/service/register':
@@ -199,36 +226,51 @@ mqttClient.on('message', (topic, message) => {
         password: '123456',
         devicePair: {
           inputDevice: {
-            id: '123456789',
+            id: 'FLAME123456789',
             type: 'flameDetector',
-            dataTypes: {
-                flameDetected: 'boolean',
+            dataFormat: {
+                flameDetected: [true, false],
+                
             },
+            trigger: {
+                flameDetected: true,
+            }
             location: 'room1',
-            pubTopic: 'flameDetector/123456789',
+            pubTopic: 'flameDetector/FLAME123456789',
           },
           outputDevices: [
             {
-              id: '987654321',
+              id: 'ALARM987654321',
               type: 'alarm',
-              dataTypes: {
-                  switch: 'boolean',
-                  volume: 'number',
-                  duration: 'number',
+              dataFormat: {
+                  switch: ['on', 'off'],
+                  volume: ['low', 'medium', 'high'],
+                  duration: [10, 20, 30],
+              },
+              defaultOutput: {
+                  switch: 'on',
+                  volume: 'high',
+                  duration: 30,
               },
               location: 'room1',
-              subTopic: 'alarm/987654321',
+              subTopic: 'alarm/ALARM987654321',
             },
             {
-              id: '123456789',
+              id: 'LIGHT123456789',
               type: 'light',
-              dataTypes: {
-                  switch: 'boolean',
-                  color: 'string',
-                  brightness: 'number',
+              dataFormat: {
+                  switch: ['on', 'off'],
+                  color: ['red', 'green', 'blue'],
+                  brightness: [10, 20, 30],
+              },
+              defaultOutput: {
+                  switch: 'on',
+                  color: 'red',
+                  brightness: 30,
+              },
               },
               location: 'room1',
-              subTopic: 'light/123456789',
+              subTopic: 'light/LIGHT123456789',
             },
           ]
 
@@ -243,13 +285,50 @@ mqttClient.on('message', (topic, message) => {
 
       var device=data.devicePair
       device.username=userExists.username
-
+      var topic=device.inputDevice.pubTopic
+      mqttClient.subscribe(topic)
       db.data.devices.push(device)
       db.write()
 
       break;
 
     default:
+      // find device by topic
+      var device = db.data.devices.filter(d => d.inputDevice.pubTopic == topic)
+      if (device.length == 0) {
+        return
+      }
+      
+      // Handle data from input device
+      for (var i = 0; i < device.length; i++) {
+        var d = device[i]
+        var inputDevice = d.inputDevice
+        var inputDataKeys = Object.keys(inputDevice.dataFormat)
+        var inData = JSON.parse(message.toString())
+        console.log(inData)
+        for (var j = 0; j < inputDataKeys.length; j++) {
+          var key = inputDataKeys[j]
+          var trigger = inputDevice.trigger[key]
+          var value = inData[key]
+          console.log('trigger: ', trigger, 'value: ', value)
+          if (trigger != value) {
+            return
+          }
+
+          
+        }
+        
+        var outputDevices = d.outputDevices
+        // console.log(inputDeviceData)
+        // console.log(outputDevices)
+        for (var j = 0; j < outputDevices.length; j++) {
+          var outputDevice = outputDevices[j]
+          var outputData=outputDevice.defaultOutput
+          // console.log(outputDeviceData)
+          var outputDeviceTopic = outputDevice.subTopic
+          mqttClient.publish(outputDeviceTopic, JSON.stringify(outputData))
+        }
+      }
       break;
   }
 });
