@@ -136,7 +136,16 @@ app.post('/register', (req, res) => {
 app.get('/:username', (req, res) => {
   
   const username = req.params.username
-
+  var html=`
+  <html>
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+  <title>裝置查詢</title>
+  </head>
+  <body class="container text-center">
+  `
   // check if user already exists
   var userExists = db.data.users.find(u => u.username == username)
   if (!userExists) {
@@ -147,10 +156,25 @@ app.get('/:username', (req, res) => {
   var devices = db.data.devices.filter(d => d.userId == userExists.username)
   if (devices.length == 0) {
 
-    res.send('您尚未註冊任何裝置')
+    html+=`
+    <h1>裝置查詢</h1>
+    <div>目前沒有裝置</div>
+    <div class="text-center fixed-bottom">Projects for NCKU IoT Lession, 2023, by Chin-Sung Tung</div>
+    </body>
+    </html>
+    `
+    res.send(html)
+
     return
   }
   devices = devices.map(d => d.deviceId)
+  html+=`
+  <h1>裝置查詢</h1>
+  <div>目前有裝置：${devices.join(',')}</div>
+  <div class="text-center fixed-bottom">Projects for NCKU IoT Lession, 2023, by Chin-Sung Tung</div>
+  </body>
+  </html>
+  `
   res.send(devices)
 }
 )
