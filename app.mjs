@@ -49,6 +49,7 @@ app.get('/', (req, res) => {
   </div>
   </form>
   <a href="/register" class="btn btn-link">註冊</a>
+  <div class="text-center fixed-bottom">Projects for NCKU IoT Lession, 2023, by Chin-Sung Tung</div>
   </body>
   </html>
   `
@@ -102,6 +103,7 @@ app.get('/register', (req, res) => {
   </div>
   </form>
   <a href="/" class="btn btn-link">登入</a>
+  <div class="text-center fixed-bottom">Projects for NCKU IoT Lession, 2023, by Chin-Sung Tung</div>
   </body>
   </html>
   `
@@ -154,7 +156,7 @@ app.get('/:username', (req, res) => {
 
 // MQTT Subscription
 mqttClient.on('connect', () => {
-  mqttClient.subscribe('no1security/device/register');
+  mqttClient.subscribe('no1security/service/register');
 });
 
 mqttClient.on('message', (topic, message) => {
@@ -162,7 +164,7 @@ mqttClient.on('message', (topic, message) => {
   console.log(topic);
 
   switch (topic) {
-    case 'no1security/device/register':
+    case 'no1security/service/register':
       // Handle device registration via MQTT
       // data example
       /*
