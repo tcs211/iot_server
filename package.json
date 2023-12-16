@@ -1,0 +1,17 @@
+{
+  "name": "iot-service",
+  "version": "1.0.0",
+  "description": "project for iot lession",
+  "main": "app.js",
+  "scripts": {
+    "dev": "nodemon app.mjs --ignore *.json"
+  },
+  "author": "tcs",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "lowdb": "^6.1.1",
+    "mqtt": "^5.3.3"
+  },
+  "type": "module"
+}
