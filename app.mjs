@@ -104,6 +104,8 @@ app.get('/register', (req, res) => {
   res.send(html)
 })
 
+
+
 app.post('/register', (req, res) => {
   var username = req.body.username
   var password = req.body.password
@@ -136,7 +138,7 @@ app.get('/:username', (req, res) => {
   // get all devices for user
   var devices = db.data.devices.filter(d => d.userId == userExists.username)
   if (devices.length == 0) {
-    
+
     res.send('您尚未註冊任何裝置')
     return
   }
@@ -145,6 +147,9 @@ app.get('/:username', (req, res) => {
 }
 )
 
+app.get('downloaddb', (req, res) => {
+  res.download('db.json')
+})
 
 // MQTT Subscription
 mqttClient.on('connect', () => {
