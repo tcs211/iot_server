@@ -7,6 +7,10 @@ import { JSONFileSync } from 'lowdb/node';
 
 const db = new LowSync(new JSONFileSync('db.json'),{})
 db.read()
+const logDb = new LowSync(new JSONFileSync('log.json'),[])
+logDb.read()
+
+
 // express server
 const app = express();
 const port = 80;
@@ -20,6 +24,13 @@ app.use(express.json());
 // 首頁，登入頁面，註冊頁面
 // body-parser
 app.use(express.urlencoded({ extended: false }))
+function cleanLog() {
+  // max 100 logs
+  if (logDb.data.length > 100) {
+    logDb.data.splice(0, logDb.data.length - 100)
+    logDb.write()
+  }
+}
 
 app.get('/', (req, res) => {
   var err=req.query.err
@@ -179,11 +190,41 @@ app.get('/:username', (req, res) => {
   var inputDeviceTypes = devices.map(d =>d.inputDevice.id+'-'+ d.inputDevice.type+'-'+d.inputDevice.location)
   for (var i = 0; i < inputDeviceTypes.length; i++) {
     var type = inputDeviceTypes[i]
-    var outputDevices = devices[i].outputDevices.map(d => d.type+'-'+d.location).join('<br>')
+    // find last log time
+    var inputDeviceTopic = devices[i].inputDevice.pubTopic+'/status'
+    var lastLog = logDb.data.filter(l => l.topic == inputDeviceTopic).sort((a,b) => b.time - a.time)[0]
+    // if log time is within 1 minute, show green dot, else show red dot
+    var now = new Date().getTime()
 
+    var lastLogTime = new Date(lastLog.time)
+    var diff = now - lastLogTime
+    var diffMinutes = diff / 1000 / 60
+    var color = diffMinutes < 2 ? 'green' : 'red'
+    // console.log('diffMinutes: ', diffMinutes)
     html+=`
     <tr>
-    <td>${type}</td>
+    <td>${type} ${lastLog?`<span style="color:${color}">●</span>`:''}</td>
+    `
+
+
+    // output devices last log time
+    var outputLogTimes = []
+    for (var j = 0; j < devices[i].outputDevices.length; j++) {
+      var outputDeviceTopic = devices[i].outputDevices[j].subTopic+'/status'
+      var lastLog = logDb.data.filter(l => l.topic == outputDeviceTopic).sort((a,b) => b.time - a.time)[0]||{time:0}
+      var lastLogTime = new Date(lastLog.time)
+      var diff = now - lastLogTime
+      var diffMinutes = diff / 1000 / 60
+      var color = diffMinutes < 2 ? 'green' : 'red'
+      // console.log('diffMinutes: ', diffMinutes)
+      outputLogTimes.push({time:lastLogTime, color:color})
+    }
+    var outputDevices = devices[i].outputDevices
+    .map((d, index) => d.id+'-'+d.type+'-'+d.location+`<span style="color:${outputLogTimes[index].color}">●</span>`)
+    .join('<br>')
+
+
+    html+=`
     <td>${outputDevices}</td>
     </tr>
     `
@@ -209,12 +250,70 @@ mqttClient.on('connect', () => {
     var device = devices[i]
     var topic = device.inputDevice.pubTopic
     mqttClient.subscribe(topic)
+    
+    mqttClient.subscribe(topic+'/status')
+    // subscribe to all output devices topics
+    for (var j = 0; j < device.outputDevices.length; j++) {
+      var outputDevice = device.outputDevices[j]
+      var topic = outputDevice.subTopic+'/status'
+      mqttClient.subscribe(topic)
+    }
   }
 });
 
 mqttClient.on('message', (topic, message) => {
+  console.log('message in: ', topic, message.toString());
+
+  if (topic.endsWith('/status')) {
+    console.log('status message in: ', message.toString());
+    // find device by topic
+    var topicInDevice = topic.replace('/status', '')
+    var device = db.data.devices.filter(d => d.inputDevice.pubTopic == topicInDevice)
+    console.log('In-device: ', device.length)
+    if (device.length == 0) {
+      // find topic in output devices
+      var outputDevice = db.data.devices.filter(d => d.outputDevices.filter(o => o.subTopic == topicInDevice).length > 0)
+      console.log('Out-device: ', outputDevice.length)
+      if (outputDevice.length == 0) {
+        return
+      }
+      // log time to database
+      for (var i = 0; i < outputDevice.length; i++) {
+        var d = outputDevice[i]
+        var outputDevices = d.outputDevices
+        for (var j = 0; j < outputDevices.length; j++) {
+          var outputDevice = outputDevices[j]
+          var outputDeviceTopic = outputDevice.subTopic
+          // time in milliseconds
+          var time = new Date().getTime()
+          if (outputDeviceTopic == topicInDevice) {
+            logDb.data.push({time:time, topic:topic})
+            logDb.write()
+          }
+        }
+      } 
+
+    } else {
+      // log time to database
+
+      for (var i = 0; i < device.length; i++) {
+        var d = device[i]
+        var inputDevice = d.inputDevice
+        
+        // var inputDeviceTopic = inputDevice.pubTopic
+        // console.log('inputDeviceTopic: ', inputDeviceTopic)
+        // time in milliseconds since 1970
+        var time = new Date().getTime()
+        logDb.data.push({time:time, topic:topic})
+        logDb.write()
+        
+      } 
+    }
+    cleanLog()
+    return;
+  }
+  
   const data = JSON.parse(message.toString());
-  console.log('topic in: ', topic);
 
   switch (topic) {
     case 'no1security/service/register':
@@ -287,6 +386,12 @@ mqttClient.on('message', (topic, message) => {
       device.username=userExists.username
       var topic=device.inputDevice.pubTopic
       mqttClient.subscribe(topic)
+      // subscribe to all output devices topics
+      for (var i = 0; i < device.outputDevices.length; i++) {
+        var outputDevice = device.outputDevices[i]
+        var topic = outputDevice.subTopic
+        mqttClient.subscribe(topic)
+      }
       db.data.devices.push(device)
       db.write()
 
