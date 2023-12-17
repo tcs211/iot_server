@@ -44,10 +44,10 @@ app.get('/', (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
-  <title>No1Security</title>
+  <title>NCKUIoTSecurity</title>
   </head>
   <body class="container text-center">
-  <h1>No1Security登入</h1>
+  <h1>NCKUIoTSecurity登入</h1>
   <form action="/login" method="post" class=" form-group">
   <div>
   <label>帳號：</label>
@@ -99,10 +99,10 @@ app.get('/register', (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
-  <title>No1Security註冊</title>
+  <title>NCKUIoTSecurity註冊</title>
   </head>
   <body class="container text-center">
-  <h1>No1Security註冊</h1>
+  <h1>NCKUIoTSecurity註冊</h1>
   <form action="/register" method="post" class=" form-group">
   <div>
   <label>帳號：</label>
@@ -246,7 +246,7 @@ app.get('/:username', (req, res) => {
 
 // MQTT Subscription
 mqttClient.on('connect', () => {
-  mqttClient.subscribe('no1security/service/register');
+  mqttClient.subscribe('NCKUIoTSecurity/service/register');
   // get all devices
   var devices = db.data.devices
   for (var i = 0; i < devices.length; i++) {
@@ -319,7 +319,7 @@ mqttClient.on('message', (topic, message) => {
   const data = JSON.parse(message.toString());
 
   switch (topic) {
-    case 'no1security/service/register':
+    case 'NCKUIoTSecurity/service/register':
       // Handle device registration via MQTT
       // data example
       /*
