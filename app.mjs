@@ -2,6 +2,7 @@ import express, { text } from 'express';
 import mqtt from 'mqtt';
 import { LowSync } from 'lowdb'
 import { JSONFileSync } from 'lowdb/node';
+import fs from 'fs';
 
 
 
@@ -16,7 +17,9 @@ const app = express();
 const port = 80;
 
 // MQTT Broker
-const mqttBroker = 'mqtt://localhost:1883';
+// reading setting.json to get MQTT broker address
+const setting = JSON.parse(fs.readFileSync('setting.json', 'utf8'));
+const mqttBroker = setting.mqttBroker;
 const mqttClient = mqtt.connect(mqttBroker);
 
 // Express middleware to parse JSON
