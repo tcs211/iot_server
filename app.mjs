@@ -3,6 +3,8 @@ import mqtt from 'mqtt';
 import { LowSync } from 'lowdb'
 import { JSONFileSync } from 'lowdb/node';
 import fs from 'fs';
+import morgan from 'morgan';
+import moment from 'moment';
 
 
 
@@ -16,6 +18,10 @@ logDb.read()
 const app = express();
 const port = 80;
 
+morgan.token("date", function () {
+  return moment().format("YYYY/MM/DD HH:mm:ss");
+});
+app.use(morgan("combined"));
 // MQTT Broker
 // reading setting.json to get MQTT broker address
 const setting = JSON.parse(fs.readFileSync('setting.json', 'utf8'));
