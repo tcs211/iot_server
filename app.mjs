@@ -194,6 +194,7 @@ app.get('/:username', (req, res) => {
   <tr>
   <th>輸入裝置</th>
   <th>輸出裝置</th>
+  <th>取消服務</th>
   </tr>
   `
   var inputDeviceTypes = devices.map(d =>d.inputDevice.id+'-'+ d.inputDevice.type+'-'+d.inputDevice.location)
@@ -201,6 +202,7 @@ app.get('/:username', (req, res) => {
     var type = inputDeviceTypes[i]
     // find last log time
     var inputDeviceTopic = devices[i].inputDevice.pubTopic+'/status'
+    var inputServiceId = devices[i].serviceId
     var lastLog = logDb.data.filter(l => l.topic == inputDeviceTopic).sort((a,b) => b.time - a.time)[0]
     // if log time is within 1 minute, show green dot, else show red dot
     var now = new Date().getTime()
@@ -233,8 +235,10 @@ app.get('/:username', (req, res) => {
     .join('<br>')
 
 
+    // cancel service /cancel/:username/:serviceId
     html+=`
     <td>${outputDevices}</td>
+    <td><button class="btn btn-danger" onclick="cancelService('${username}', '${inputServiceId}')">取消服務</button></td>
     </tr>
     `
   }
@@ -242,10 +246,51 @@ app.get('/:username', (req, res) => {
   html+=`
   
   <div class="text-center fixed-bottom">Projects for NCKU IoT Lession, 2023, by Chin-Sung Tung</div>
+  <script>
+  function cancelService(username, serviceId) {
+    if (confirm('確定要取消服務嗎？')) {
+      window.location.href='/cancel/'+username+'/'+serviceId
+    }
+  }
+  </script>
   </body>
   </html>
   `
   res.send(html)
+}
+)
+
+app.get('/cancel/:username/:serviceId', (req, res) => {
+  var serviceId = req.params.serviceId
+  var username = req.params.username  
+  var device = db.data.devices.find(d => d.serviceId == serviceId && d.username == username)
+  var html
+  if (!device) {
+    // alert error
+    html=`
+    <html>
+    <script>
+    alert('取消服務失敗')
+    window.location.href='/${username}'
+    </script>
+    </html>
+    `
+    res.send(html)
+  }
+  // console.log(device)
+  // remove from db
+  var index = db.data.devices.indexOf(device)
+  db.data.devices.splice(index, 1)
+  db.write()
+  html=`
+    <html>
+    <script>
+    alert('取消服務成功')
+    window.location.href='/${username}'
+    </script>
+    </html>
+    `
+    res.send(html)
 }
 )
 
@@ -401,6 +446,9 @@ mqttClient.on('message', (topic, message) => {
         var topic = outputDevice.subTopic
         mqttClient.subscribe(topic)
       }
+      // add serviceId: yyyymmddhhmmssms
+      var serviceId = moment().format('YYYYMMDDHHmmssSSS')
+      device.serviceId = serviceId
       db.data.devices.push(device)
       db.write()
 
