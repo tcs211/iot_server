@@ -678,7 +678,7 @@ mqttClient.on('message', (topic, message) => {
 
 // Start the server on port 3000 if on test environment with nodemon
 
-if(port == 8080){
+if(port == 80){
   var key="";
   var cert="";
   try{
