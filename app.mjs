@@ -216,7 +216,7 @@ app.get('/:username', (req, res) => {
     // if log time is within 1 minute, show green dot, else show red dot
     var now = new Date().getTime()
 
-    var lastLogTime = new Date(lastLog.time)
+    var lastLogTime = new Date(lastLog.time||0)
     var diff = now - lastLogTime
     var diffMinutes = diff / 1000 / 60
     var color = diffMinutes < 2 ? 'green' : 'red'
