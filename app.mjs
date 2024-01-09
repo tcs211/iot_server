@@ -5,8 +5,13 @@ import { JSONFileSync } from 'lowdb/node';
 import fs from 'fs';
 import morgan from 'morgan';
 import moment from 'moment';
+import http from 'http';
+import https from 'https';
 
+// read arguments
+var port = parseInt(process.argv[2]) || 80;
 
+console.log('port: ', port)
 
 const db = new LowSync(new JSONFileSync('db.json'),{})
 db.read()
@@ -14,9 +19,9 @@ const logDb = new LowSync(new JSONFileSync('log.json'),[])
 logDb.read()
 
 
+
 // express server
 const app = express();
-const port = 80;
 
 morgan.token("date", function () {
   return moment().format("YYYY/MM/DD HH:mm:ss");
@@ -40,6 +45,8 @@ function cleanLog() {
     logDb.write()
   }
 }
+// set public folder as static folder for static file
+app.use(express.static('public'))
 
 app.get('/', (req, res) => {
   var err=req.query.err
@@ -180,6 +187,7 @@ app.get('/:username', (req, res) => {
     html+=`
     <h1>裝置查詢</h1>
     <div>目前沒有裝置</div>
+    <button class="btn btn-primary" onclick="window.location.href='/add/${username}'">新增裝置</button>
     <div class="text-center fixed-bottom">Projects for NCKU IoT Lession, 2023, by Chin-Sung Tung</div>
     </body>
     </html>
@@ -189,6 +197,7 @@ app.get('/:username', (req, res) => {
     return
   }
   html+=`<h1>裝置查詢</h1>
+  <button class="btn btn-primary" onclick="window.location.href='/add/${username}'">新增裝置</button>
   <table class="table table-striped">
   <thead>
   <tr>
@@ -293,6 +302,178 @@ app.get('/cancel/:username/:serviceId', (req, res) => {
     res.send(html)
 }
 )
+
+// read qr code to add device
+
+app.get('/add/:username', (req, res) => {
+  var username = req.params.username
+  var html=`
+  <html>
+  <head>
+  <title>掃描QR Code</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+  </head>
+  
+  <body>
+  <h1>新增裝置</h1>
+
+  <div>
+    <h3>輸入裝置
+      <button onclick="openQRCamera('reader', 'input')">開啟相機掃QR code</button></h3>
+    <div id="input" style="min-height:50px">
+    </div>
+
+    <h3>輸出裝置
+      <button onclick="openQRCamera('reader', 'output')">開啟相機掃QR code</button></h3>
+    <div id="output" style="min-height:50px">
+    </div>
+    <br>
+    <button onclick="confirmAddDevice()">確定新增裝置</button>
+
+  </div>
+
+
+  <div style="position:fixed;top:0;left:0;background-color:rgba(0,0,0,0.9);width:100%;height:100%;display:none;" id="qrReader">
+  <div id="reader" style="max-width:600px;" ></div>
+  <button onclick="document.getElementById('qrReader').style.display='none'">關閉</button>
+  </div>
+  <script type="text/javascript">
+  
+    var html5QrcodeScanner
+    var target
+    var inputDevice
+    var outputDevices=[]
+    var username='${username}'
+    function onScanSuccess(decodedText, decodedResult) {
+      // close qr reader
+      var qrReader=document.getElementById('qrReader')
+      qrReader.style.display='none'
+
+      var obj = JSON.parse(decodedText)
+      html5QrcodeScanner.clear();
+      // input device 
+      // { "id": "FLAME123456789",   "type": "flameDetector",
+      //   "dataFormat": {
+      //     "flameDetected": [
+      //       true,
+      //       false
+      //     ]
+      //   },
+      //   "trigger": {
+      //     "flameDetected": true
+      //   },
+      //   "location": "",
+      //   "pubTopic": "flameDetector/FLAME123456789"
+      // }
+      // output device {id:'ALARM987654321',type:'alarm',
+      // dataFormat:{switch:['on','off'],volume:['low','medium','high'],duration:[10,20,30],},
+      // defaultOutput:{switch:'on',volume:'high',duration:30,},location:'',subTopic:'alarm/ALARM987654321',}
+
+      if (target=='input') {
+        
+        if (!obj.trigger) {
+          alert('此QR code不是輸入裝置')
+          return
+        }
+        inputDevice=obj
+        var id = obj.id
+        var type = obj.type
+        var location = obj.location
+        var html="<h4>新輸入裝置</h4>"
+        html+="id: "+id+"<br>"
+        html+="type: "+type+"<br>"
+        html+="location: <input type='text' id='location' value='"+location+"'><br>"
+
+        var inputDIV=document.getElementById('input')
+        inputDIV.innerHTML=html
+      } else {
+        if (!obj.defaultOutput) {
+          alert('此QR code不是輸出裝置')
+          return
+        }
+        outputDevices.push(obj)
+        var id = obj.id
+        var type = obj.type
+        var location = obj.location
+        var html="<h4>新輸出裝置</h4>"
+        html+="id: "+id+"<br>"
+        html+="type: "+type+"<br>"
+        html+="location: <input type='text' id='location' value='"+location+"'><br>"
+
+        var outputDIV=document.getElementById('output')
+        outputDIV.innerHTML=outputDIV.innerHTML+html
+
+      }
+
+    }
+
+    function onScanFailure(error) {
+      
+    }
+
+    function openQRCamera(reader, targetId) {    
+      // show qr reader
+      var qrReader=document.getElementById('qrReader')
+      qrReader.style.display='block'
+
+      target=targetId
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        reader, { fps: 10, qrbox: 250 });
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    }
+    function confirmAddDevice() {
+      if (!inputDevice) {
+        alert('請掃描輸入裝置')
+        return
+      }
+      if (outputDevices.length == 0) {
+        alert('請掃描輸出裝置')
+        return
+      }
+      data={username:username, devicePair:{inputDevice:inputDevice, outputDevices:outputDevices}}
+
+      axios.post('/adddevice', data).then(res => {
+        window.location.href='/'+username
+      }
+      ).catch(err => {
+        alert('新增裝置失敗')
+      })
+
+    }
+    
+
+
+  </script>
+</body>
+</html>
+    `
+    res.send(html)
+})
+
+app.post('/adddevice', (req, res) => {
+  var data = req.body
+  // check if user already exists
+  var userExists = db.data.users.find(u => u.username == data.username)
+  if (!userExists) {
+    res.redirect('register')
+    return
+  }
+  
+  var password= userExists.password
+  data.password = password
+  
+  console.log(data)
+  
+  mqttClient.publish('NCKUIoTSecurity/service/register', JSON.stringify(data))
+  res.send('ok')
+}
+)
+
+
 
 
 // MQTT Subscription
@@ -497,6 +678,37 @@ mqttClient.on('message', (topic, message) => {
 
 // Start the server on port 3000 if on test environment with nodemon
 
-app.listen(port, () => {
-  console.log(`Server is running successfully`);
-})
+if(port == 8080){
+  var key="";
+  var cert="";
+  try{
+    key=fs.readFileSync(`C:\\Certbot\\live\\to-ai.net\\privkey.pem`);
+    cert=fs.readFileSync(`C:\\Certbot\\live\\to-ai.net\\fullchain.pem`);
+  } catch(err){
+    console.log(err);
+  }
+  var options= {
+  //SSL憑證, 用於https, 使用certbot產生
+  key: key,
+  cert: cert,
+  secureProtocol: 'TLSv1_2_method',
+  ciphers:[
+    "ECDHE-RSA-AES128-GCM-SHA256",
+    "ECDHE-ECDSA-AES128-GCM-SHA256",
+    "ECDHE-RSA-AES256-GCM-SHA384",
+    "ECDHE-ECDSA-AES256-GCM-SHA384",
+    "DHE-RSA-AES128-GCM-SHA256",
+  
+  ].join(':'),
+  }
+
+  https.createServer(options, app).listen(443, function () {
+    console.log("hhtps listening on port 443");
+  });
+}
+
+
+//http server
+http.createServer(app).listen(port, function () {
+  console.log("Express server listening on port " + port);
+});

@@ -4,7 +4,7 @@
   "description": "project for iot lession",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon app.mjs --ignore *.json"
+    "dev": "nodemon app.mjs --ignore *.json 8080" 
   },
   "author": "tcs",
   "license": "ISC",
