@@ -39,9 +39,9 @@ app.use(express.json());
 // body-parser
 app.use(express.urlencoded({ extended: false }))
 function cleanLog() {
-  // max 100 logs
-  if (logDb.data.length > 100) {
-    logDb.data.splice(0, logDb.data.length - 100)
+  // max 1000 logs
+  if (logDb.data.length > 1000) {
+    logDb.data.splice(0, logDb.data.length - 900)
     logDb.write()
   }
 }
@@ -313,7 +313,7 @@ app.get('/add/:username', (req, res) => {
   <head>
   <title>掃描QR Code</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
@@ -324,16 +324,16 @@ app.get('/add/:username', (req, res) => {
 
   <div>
     <h3>輸入裝置
-      <button onclick="openQRCamera('reader', 'input')">開啟相機掃QR code</button></h3>
+      <button class="btn btn-primary" onclick="openQRCamera('reader', 'input')">開啟相機掃QR code</button></h3>
     <div id="input" style="min-height:50px">
     </div>
 
     <h3>輸出裝置
-      <button onclick="openQRCamera('reader', 'output')">開啟相機掃QR code</button></h3>
+      <button class="btn btn-primary" onclick="openQRCamera('reader', 'output')">開啟相機掃QR code</button></h3>
     <div id="output" style="min-height:50px">
     </div>
     <br>
-    <button onclick="confirmAddDevice()">確定新增裝置</button>
+    <button class="btn btn-danger" onclick="confirmAddDevice()">確定新增裝置</button>
 
   </div>
 
