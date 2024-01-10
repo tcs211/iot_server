@@ -689,7 +689,6 @@ mqttClient.on('message', (topic, message) => {
             outputData={
               switch:'off',
             }
-            outputData.switch='off'
           } 
           var outputDeviceTopic = outputDevice.subTopic
           mqttClient.publish(outputDeviceTopic, JSON.stringify(outputData))
