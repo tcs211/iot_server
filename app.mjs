@@ -657,7 +657,7 @@ mqttClient.on('message', (topic, message) => {
       if (device.length == 0) {
         return
       }
-      
+      var trigerOn=true
       // Handle data from input device
       for (var i = 0; i < device.length; i++) {
         var d = device[i]
@@ -671,7 +671,8 @@ mqttClient.on('message', (topic, message) => {
           var value = inData[key]
           console.log('trigger: ', trigger, 'value: ', value)
           if (trigger != value) {
-            return
+            trigerOn=false
+            break
           }
 
           
@@ -684,6 +685,11 @@ mqttClient.on('message', (topic, message) => {
           var outputDevice = outputDevices[j]
           var outputData=outputDevice.defaultOutput
           // console.log(outputDeviceData)
+          if (!trigerOn) {
+            outputData.switch='off'
+          } else {
+            outputData.switch='on'
+          }
           var outputDeviceTopic = outputDevice.subTopic
           mqttClient.publish(outputDeviceTopic, JSON.stringify(outputData))
         }
