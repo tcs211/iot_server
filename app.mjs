@@ -549,7 +549,13 @@ mqttClient.on('message', (topic, message) => {
     return;
   }
   
-  const data = JSON.parse(message.toString());
+  try {
+  var data = JSON.parse(message.toString());
+  } catch(err) {
+    console.log(err)
+    return
+  }
+
 
   switch (topic) {
     case 'NCKUIoTSecurity/service/register':
@@ -617,7 +623,7 @@ mqttClient.on('message', (topic, message) => {
       if (!userExists) {
         return
       }
-
+      try {
       var device=data.devicePair
       device.username=userExists.username
       var topic=device.inputDevice.pubTopic
@@ -633,10 +639,14 @@ mqttClient.on('message', (topic, message) => {
       device.serviceId = serviceId
       db.data.devices.push(device)
       db.write()
+    } catch(err) {
+      console.log(err)
+    }    
 
       break;
 
     default:
+      try {
       // find device by topic
       var device = db.data.devices.filter(d => d.inputDevice.pubTopic == topic)
       if (device.length == 0) {
@@ -673,6 +683,10 @@ mqttClient.on('message', (topic, message) => {
           mqttClient.publish(outputDeviceTopic, JSON.stringify(outputData))
         }
       }
+    } catch(err) {
+      console.log(err)
+    }
+    
       break;
   }
 });
