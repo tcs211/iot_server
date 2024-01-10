@@ -628,10 +628,15 @@ mqttClient.on('message', (topic, message) => {
       device.username=userExists.username
       var topic=device.inputDevice.pubTopic
       mqttClient.subscribe(topic)
+      topic = topic+'/status'
+      mqttClient.subscribe(topic)
+
       // subscribe to all output devices topics
       for (var i = 0; i < device.outputDevices.length; i++) {
         var outputDevice = device.outputDevices[i]
         var topic = outputDevice.subTopic
+        mqttClient.subscribe(topic)
+        topic = topic+'/status'
         mqttClient.subscribe(topic)
       }
       // add serviceId: yyyymmddhhmmssms
