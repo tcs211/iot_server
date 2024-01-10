@@ -686,10 +686,11 @@ mqttClient.on('message', (topic, message) => {
           var outputData=outputDevice.defaultOutput
           // console.log(outputDeviceData)
           if (!trigerOn) {
+            outputData={
+              switch:'off',
+            }
             outputData.switch='off'
-          } else {
-            outputData.switch='on'
-          }
+          } 
           var outputDeviceTopic = outputDevice.subTopic
           mqttClient.publish(outputDeviceTopic, JSON.stringify(outputData))
         }
