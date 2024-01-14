@@ -477,8 +477,9 @@ app.post('/adddevice', (req, res) => {
 
 
 
-// MQTT Subscription
-mqttClient.on('connect', () => {
+
+
+function subscribe(){
   mqttClient.subscribe('NCKUIoTSecurity/service/register');
   // get all devices
   var devices = db.data.devices
@@ -495,7 +496,18 @@ mqttClient.on('connect', () => {
       mqttClient.subscribe(topic)
     }
   }
+}
+
+// MQTT Subscription
+mqttClient.on('connect', () => {
+  subscribe()
 });
+
+//reconnect mqtt broker when disconnected
+mqttClient.on('reconnect', () => {
+  subscribe()
+});
+
 
 mqttClient.on('message', (topic, message) => {
   console.log('message in: ', topic, message.toString());
